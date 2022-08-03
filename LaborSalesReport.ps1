@@ -11,6 +11,7 @@ param (
 . $PSScriptRoot\PaylocityImport.ps1
 . $PSScriptRoot\ShopperTrakImport.ps1
 . $PSScriptRoot\Calendar.ps1
+. $PSScriptRoot\MailSettings.ps1
 
 # Convert and import data
 Write-Progress -Activity "Labor Sales Report" -CurrentOperation "Importing data"
@@ -227,3 +228,8 @@ Set-ExcelRange -Address $Sheet.Cells["L$($Sheet.Dimension.Rows)"] -Formula "=K$(
 # Save Excel file
 $xl | Close-ExcelPackage
 Write-Progress -Activity "Labor Sales Report" -Completed
+
+# Email Report
+$MailDateString = $Calendar.WeekStartDates[$CurrentWeekIndex].ToString("d")
+$MailTitle = "Labor Sales Report for week of $MailDateString"
+Send-MailMessage @MailParams -Subject $MailTitle -Attachments $ExportPath\$ReportXlsx
