@@ -115,9 +115,9 @@ $DateAggregrations = foreach ($Timespan in $Timespans) {
   
     [PSCustomObject]@{
       Store = $LaborLocation
-      "$TimespanAcronym`_Hours" = [Math]::Round($LaborHours)
+      "$TimespanAcronym`_Hours" = [Math]::Round($LaborHours, 2)
       "$TimespanAcronym`_Wages" = [Math]::Round($LaborPay, 2)
-      "$TimespanAcronym`_Payroll%" = [Math]::Round($SalesConversion, 2)
+      "$TimespanAcronym`_Payroll%" = [Math]::Round($SalesConversion, 4)
       "$TimespanAcronym`_Sales" = [Math]::Round($TimespanTotalSales, 2)
     }
   }
