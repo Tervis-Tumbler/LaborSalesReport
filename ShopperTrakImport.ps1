@@ -23,7 +23,7 @@ function Import-ShopperTrakSales100Days {
         Where-Object StoreID -eq $_.Location |
         Select-Object -ExpandProperty PaylocityName
       # The following line is temporary
-      if (-not $LocationName) { $LocationName = "BRANSON-TANGER2"}
+      if (-not $LocationName) { $LocationName = "BRANSON-TANGER"}
       [PSCustomObject]@{
         Index = $j
         OrderId = $_.OrderId
