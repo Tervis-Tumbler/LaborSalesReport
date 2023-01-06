@@ -97,6 +97,12 @@ $DateAggregrations = foreach ($Timespan in $Timespans) {
   
   foreach ($Labor in $CurrentTimespanLabor) {
     $LaborLocation = $Labor.Name
+    $OperationHours = $ShopperTrakDataWithDateIndices |
+      Where-Object Location -eq $LaborLocation |
+      Select-Object -First 1 |
+      Select-Object -ExpandProperty OperationHours
+
+    if (-not $OperationHours) { continue }
     $LaborHours = $Labor.Group |
       Measure-Object -Property TotalHours -Sum |
       Select-Object -ExpandProperty Sum
@@ -114,7 +120,7 @@ $DateAggregrations = foreach ($Timespan in $Timespans) {
     $SalesConversion = $LaborPay / $TimespanTotalSales
   
     [PSCustomObject]@{
-      Store = $LaborLocation
+      Store = $LaborLocation,$OperationHours -join "_"
       "$TimespanAcronym`_Hours" = [Math]::Round($LaborHours, 2)
       "$TimespanAcronym`_Wages" = [Math]::Round($LaborPay, 2)
       "$TimespanAcronym`_Payroll%" = [Math]::Round($SalesConversion, 4)
@@ -126,7 +132,9 @@ $DateAggregrations = foreach ($Timespan in $Timespans) {
 # Join data by store
 Write-Progress -Activity "Labor Sales Report" -CurrentOperation "Aggregating data by store"
 $JoinedByStore = $DateAggregrations | Group-Object -Property Store | ForEach-Object {
-  $Hashtable = @{ Store = $_.Name }
+  $StoreName = ($_.Name -split "_")[0]
+  $OperationHours = ($_.Name -split "_")[1]
+  $Hashtable = @{ Store = $StoreName; OperationHours = $OperationHours }
   $_.Group | ForEach-Object {
     $_.PSObject.Properties |
       Where-Object {
@@ -167,6 +175,7 @@ $ReportXlsx = "LaborSalesReport_$ReportDate.xlsx"
 Remove-Item -Path $ExportPath\$ReportXlsx -Force -ErrorAction Continue
 $xl = $JoinedByStore | Select-Object -Property `
   Store,
+  OperationHours,
   WTD_Hours,
   WTD_Wages,
   "WTD_Payroll%",
@@ -185,31 +194,33 @@ $Sheet = $xl.Sheet1
 $Sheet.InsertRow(1,1)
 
 # Set Date, WTD,MTD,QTD headers
-$Sheet.Cells["A1"].Value = "Week of $($Calendar.WeekStartDates[$CurrentWeekIndex].ToString("MM/dd/yyyy"))"
-Set-ExcelRange -Address $Sheet.Cells["B1:E1"] -Merge -Value "WTD" -Bold -Underline -HorizontalAlignment "Center"
-Set-ExcelRange -Address $Sheet.Cells["F1:I1"] -Merge -Value "MTD" -Bold -Underline -HorizontalAlignment "Center"
-Set-ExcelRange -Address $Sheet.Cells["J1:M1"] -Merge -Value "QTD" -Bold -Underline -HorizontalAlignment "Center"
+# $Sheet.Cells["A1"].Value = "Week of $($Calendar.WeekStartDates[$CurrentWeekIndex].ToString("MM/dd/yyyy"))"
+Set-ExcelRange -Address $Sheet.Cells["A1:B1"] -Merge -Value "Week of $($Calendar.WeekStartDates[$CurrentWeekIndex].ToString("MM/dd/yyyy"))"
+Set-ExcelRange -Address $Sheet.Cells["C1:F1"] -Merge -Value "WTD" -Bold -Underline -HorizontalAlignment "Center"
+Set-ExcelRange -Address $Sheet.Cells["G1:J1"] -Merge -Value "MTD" -Bold -Underline -HorizontalAlignment "Center"
+Set-ExcelRange -Address $Sheet.Cells["K1:N1"] -Merge -Value "QTD" -Bold -Underline -HorizontalAlignment "Center"
 
 # Set column headers
-$Columns = "A","B","C","D","E","F","G","H","I","J","K","L","M"
-$Headings = "Store","Hours","Wages","Payroll %","Sales","Hours","Wages","Payroll %","Sales","Hours","Wages","Payroll %","Sales"
+$Columns = "A","B","C","D","E","F","G","H","I","J","K","L","M","N"
+$Headings = "Store","Hours of Operation","Hours","Wages","Payroll %","Sales","Hours","Wages","Payroll %","Sales","Hours","Wages","Payroll %","Sales"
 $Columns | ForEach-Object {
   $Shift,$Headings = $Headings
   $Sheet.Cells["$_`2"].Value = $Shift
 }
-Set-ExcelRange -Address $Sheet.Cells["A2:M2"] -HorizontalAlignment "Center" -Bold 
+Set-ExcelRange -Address $Sheet.Cells["A2:N2"] -HorizontalAlignment "Center" -Bold 
 
 # Format cells
-Set-ExcelRange -Address $Sheet.Cells["C1:E$($Sheet.Dimension.Rows)"] -AutoSize -NumberFormat "Currency"
-Set-ExcelRange -Address $Sheet.Cells["G1:I$($Sheet.Dimension.Rows)"] -AutoSize -NumberFormat "Currency"
-Set-ExcelRange -Address $Sheet.Cells["K1:M$($Sheet.Dimension.Rows)"] -AutoSize -NumberFormat "Currency"
-Set-ExcelRange -Address $Sheet.Cells["D1:D$($Sheet.Dimension.Rows)"] -AutoSize -NumberFormat "Percentage"
-Set-ExcelRange -Address $Sheet.Cells["H1:H$($Sheet.Dimension.Rows)"] -AutoSize -NumberFormat "Percentage"
-Set-ExcelRange -Address $Sheet.Cells["L1:L$($Sheet.Dimension.Rows)"] -AutoSize -NumberFormat "Percentage"
-Set-ExcelRange -Address $Sheet.Cells["B1:E$($Sheet.Dimension.Rows)"] -BorderAround "Medium"
-Set-ExcelRange -Address $Sheet.Cells["F1:I$($Sheet.Dimension.Rows)"] -BorderAround "Medium"
-Set-ExcelRange -Address $Sheet.Cells["J1:M$($Sheet.Dimension.Rows)"] -BorderAround "Medium"
-Set-ExcelRange -Address $Sheet.Cells["A2:M$($Sheet.Dimension.Rows)"] -PatternColor "Blue"
+Set-ExcelRange -Address $Sheet.Cells["B1:B$($Sheet.Dimension.Rows)"] -AutoSize -HorizontalAlignment "Center"
+Set-ExcelRange -Address $Sheet.Cells["D1:F$($Sheet.Dimension.Rows)"] -AutoSize -NumberFormat "Currency"
+Set-ExcelRange -Address $Sheet.Cells["H1:J$($Sheet.Dimension.Rows)"] -AutoSize -NumberFormat "Currency"
+Set-ExcelRange -Address $Sheet.Cells["L1:N$($Sheet.Dimension.Rows)"] -AutoSize -NumberFormat "Currency"
+Set-ExcelRange -Address $Sheet.Cells["E1:E$($Sheet.Dimension.Rows)"] -AutoSize -NumberFormat "Percentage"
+Set-ExcelRange -Address $Sheet.Cells["I1:I$($Sheet.Dimension.Rows)"] -AutoSize -NumberFormat "Percentage"
+Set-ExcelRange -Address $Sheet.Cells["M1:M$($Sheet.Dimension.Rows)"] -AutoSize -NumberFormat "Percentage"
+Set-ExcelRange -Address $Sheet.Cells["C1:F$($Sheet.Dimension.Rows)"] -BorderAround "Medium"
+Set-ExcelRange -Address $Sheet.Cells["G1:J$($Sheet.Dimension.Rows)"] -BorderAround "Medium"
+Set-ExcelRange -Address $Sheet.Cells["K1:N$($Sheet.Dimension.Rows)"] -BorderAround "Medium"
+Set-ExcelRange -Address $Sheet.Cells["A2:N$($Sheet.Dimension.Rows)"] -PatternColor "Blue"
 
 for ($i = 2; $i -lt $Sheet.Dimension.Rows; $i++) {
   if ($i % 2 -eq 0) {
@@ -221,9 +232,9 @@ for ($i = 2; $i -lt $Sheet.Dimension.Rows; $i++) {
 }
 
 # Add formulas for pecentages
-Set-ExcelRange -Address $Sheet.Cells["D$($Sheet.Dimension.Rows)"] -Formula "=C$($Sheet.Dimension.Rows)/E$($Sheet.Dimension.Rows)"
-Set-ExcelRange -Address $Sheet.Cells["H$($Sheet.Dimension.Rows)"] -Formula "=G$($Sheet.Dimension.Rows)/I$($Sheet.Dimension.Rows)"
-Set-ExcelRange -Address $Sheet.Cells["L$($Sheet.Dimension.Rows)"] -Formula "=K$($Sheet.Dimension.Rows)/M$($Sheet.Dimension.Rows)"
+Set-ExcelRange -Address $Sheet.Cells["E$($Sheet.Dimension.Rows)"] -Formula "=D$($Sheet.Dimension.Rows)/F$($Sheet.Dimension.Rows)"
+Set-ExcelRange -Address $Sheet.Cells["I$($Sheet.Dimension.Rows)"] -Formula "=H$($Sheet.Dimension.Rows)/J$($Sheet.Dimension.Rows)"
+Set-ExcelRange -Address $Sheet.Cells["M$($Sheet.Dimension.Rows)"] -Formula "=L$($Sheet.Dimension.Rows)/N$($Sheet.Dimension.Rows)"
 
 # Save Excel file
 $xl | Close-ExcelPackage

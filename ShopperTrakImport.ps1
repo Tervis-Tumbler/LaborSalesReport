@@ -19,18 +19,27 @@ function Import-ShopperTrakSales100Days {
       $j++
       $DateString = $_.Date.ToString() + $_.Time.ToString()
       $Date = [DateTime]::ParseExact($DateString, "yyyyMMddHHmmss", $null)
-      $LocationName = $SubstitutionTable |
+      $StoreInfo = $SubstitutionTable |
         Where-Object StoreID -eq $_.Location |
-        Select-Object -ExpandProperty PaylocityName
+        # Select-Object -ExpandProperty PaylocityName
+        Select-Object -Property PaylocityName,OperationHours
       # The following line is temporary
-      if (-not $LocationName) { $LocationName = "BRANSON-TANGER"}
-      [PSCustomObject]@{
-        Index = $j
-        OrderId = $_.OrderId
-        Date = $Date
-        Location = $LocationName
-        Total = $_.Total
-        Quantity = $_.Quantity
+      if (-not $StoreInfo) {
+        $StoreInfo = @{
+          PaylocityName = "BRANSON-TANGER"
+          OperationHours = 63
+        }
+      }
+      if ($StoreInfo.OperationHours -gt 0) {
+        [PSCustomObject]@{
+          Index = $j
+          OrderId = $_.OrderId
+          Date = $Date
+          Location = $StoreInfo.PaylocityName
+          Total = $_.Total
+          Quantity = $_.Quantity
+          OperationHours = $StoreInfo.OperationHours
+        }
       }
     }
   }

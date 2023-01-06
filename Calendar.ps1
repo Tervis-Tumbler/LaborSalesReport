@@ -1,6 +1,6 @@
 function Get-LaborSalesCalendar {
   param (
-    $ProductionYearStartDate = "1/2/2022"
+    $ProductionYearStartDate = "1/1/2023"
   )
 
   $YearStartDate = Get-Date $ProductionYearStartDate
