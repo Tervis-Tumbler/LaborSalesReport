@@ -2,7 +2,7 @@
 
 param (
   [string]$ReportDate,
-  [string]$ProductionYearStartDate = "1/2/2022",
+  [string]$ProductionYearStartDate = "1/1/2023",
   [string]$ExportPath = "\\$($env:USERDNSDOMAIN)\applications\Shopify\Paylocity\Reports"
 )
 
@@ -18,7 +18,7 @@ Write-Progress -Activity "Labor Sales Report" -CurrentOperation "Importing data"
 Invoke-PaylocityLaborExportConversion
 $PaylocityData = Import-PaylocityLabor100Days
 $ShopperTrakData = Import-ShopperTrakSales100Days
-$Calendar = Get-LaborSalesCalendar -ProductionYearStartDate "1/2/2022"
+$Calendar = Get-LaborSalesCalendar -ProductionYearStartDate $ProductionYearStartDate
 
 # Add date metadata to ShopperTrak
 $i = 0
